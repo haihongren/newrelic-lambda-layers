@@ -4,41 +4,41 @@ set -Eeuo pipefail
 
 # Regions that support arm64 architecture
 REGIONS_ARM=(
-	ap-northeast-1
-	ap-south-1
-	ap-southeast-1
+	# ap-northeast-1
+	# ap-south-1
+	# ap-southeast-1
 	ap-southeast-2
-	eu-central-1
-	eu-west-1
-	eu-west-2
-	us-east-1
-	us-east-2
-	us-west-2
+	# eu-central-1
+	# eu-west-1
+	# eu-west-2
+	# us-east-1
+	# us-east-2
+	# us-west-2
 )
 
 REGIONS_X86=(
-  af-south-1
-  ap-east-1
-  ap-northeast-1
-  ap-northeast-2
-  ap-northeast-3
-  ap-south-1
-  ap-southeast-1
+  # af-south-1
+  # ap-east-1
+  # ap-northeast-1
+  # ap-northeast-2
+  # ap-northeast-3
+  # ap-south-1
+  # ap-southeast-1
   ap-southeast-2
-  ap-southeast-3
-  ca-central-1
-  eu-central-1
-  eu-north-1
-  eu-south-1
-  eu-west-1
-  eu-west-2
-  eu-west-3
-  me-south-1
-  sa-east-1
-  us-east-1
-  us-east-2
-  us-west-1
-  us-west-2
+  # ap-southeast-3
+  # ca-central-1
+  # eu-central-1
+  # eu-north-1
+  # eu-south-1
+  # eu-west-1
+  # eu-west-2
+  # eu-west-3
+  # me-south-1
+  # sa-east-1
+  # us-east-1
+  # us-east-2
+  # us-west-1
+  # us-west-2
 )
 
 EXTENSION_DIST_DIR=extensions
@@ -46,7 +46,9 @@ EXTENSION_DIST_ZIP=extension.zip
 EXTENSION_DIST_PREVIEW_FILE=preview-extensions-ggqizro707
 
 EXTENSION_VERSION=2.2.1
-
+# <CHANGE THIS TO YOUR S3 BUCKET_NAME_PREFIX>
+BUCKET_NAME_PREFIX="hhnr" 
+LAYER_NAME_PREFIX="my-" 
 function list_all_regions {
     aws ec2 describe-regions \
       --all-regions \
@@ -163,7 +165,7 @@ function publish_layer {
 
     hash=$( hash_file $layer_archive | awk '{ print $1 }' )
 
-    bucket_name="nr-layers-${region}"
+    bucket_name="${BUCKET_NAME_PREFIX}-layers-${region}"
     s3_key="$( s3_prefix $runtime_name )/${hash}.${arch}.zip"
 
     compat_list=( $runtime_name )
@@ -181,9 +183,9 @@ function publish_layer {
 
     echo "Publishing ${runtime_name} layer to ${region}"
     layer_version=$(aws lambda publish-layer-version \
-      --layer-name ${layer_name} \
+      --layer-name ${LAYER_NAME_PREFIX}${layer_name} \
       --content "S3Bucket=${bucket_name},S3Key=${s3_key}" \
-      --description "New Relic Layer for ${runtime_name} (${arch})" \
+      --description "Customized New Relic Layer for ${runtime_name} (${arch})" \
       --license-info "Apache-2.0" $arch_flag \
       --compatible-runtimes ${compat_list[*]} \
       --region "$region" \
@@ -192,12 +194,14 @@ function publish_layer {
     echo "Published ${runtime_name} layer version ${layer_version} to ${region}"
 
     echo "Setting public permissions for ${runtime_name} layer version ${layer_version} in ${region}"
-    aws lambda add-layer-version-permission \
-      --layer-name ${layer_name} \
+    permission=$(aws lambda add-layer-version-permission \
+      --layer-name ${LAYER_NAME_PREFIX}${layer_name} \
       --version-number "$layer_version" \
       --statement-id public \
       --action lambda:GetLayerVersion \
       --principal "*" \
-      --region "$region"
+      --region "$region" | tr '[:blank:]' '\n')
+    
+    echo "Permission: ${permission}"
     echo "Public permissions set for ${runtime_name} layer version ${layer_version} in region ${region}"
 }
