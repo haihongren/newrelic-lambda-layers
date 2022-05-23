@@ -132,7 +132,6 @@ function customWrapper() {
       names.forEach((element) => {
         if (jsonBody.hasOwnProperty(element)) {
           newrelic.addCustomAttribute(element, jsonBody[element]);
-          event.headers[element] = jsonBody[element]
         }
       })
     }
